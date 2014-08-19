@@ -29,11 +29,11 @@
 */
 
 :- module(rdfql_util,
-	  [ select_results/6,		% +Distinct, +Offset, +Limit,
-					% :SortBy, -Result, :Goal
-	    select_results/9,		% +Distinct, +Group, +Having, +Agg,
+	  [ select_results/7,		% +Distinct, +Offset, +Limit,
+					% :SortBy, +Dataset:compound, -Result, :Goal
+	    select_results/10,		% +Distinct, +Group, +Having, +Agg,
 					% +Offset, +Limit,
-					% :SortBy, -Result, :Goal
+					% :SortBy, +Dataset:compound, -Result, :Goal
 	    entailment_module/2		% +Entailment, -Module
 	  ]).
 :- use_module(library(nb_set)).
@@ -44,20 +44,20 @@
 :- use_module(sparql_runtime).
 
 :- meta_predicate
-	select_results(+, +, 0, +, +, +, +, -, 0),
-	select_results(+, +, +, +, -, 0),
-	select_results(+, +, +, -, 0).
+	select_results(+, +, 0, +, +, +, +, +, -, 0),
+	select_results(+, +, +, +, +, -, 0),
+	select_results(+, +, +, +, -, 0).
 
-%%	select_results(+Distinct, +Offset, +Limit, +SortBy, -Result, :Goal)
+%%	select_results(+Distinct, +Offset, +Limit, +SortBy, +Dataset:compound, -Result, :Goal)
 %
-%	Calls select_results/8 using Group=[] and Having=true.
+%	Calls select_results/10 using Group=[] and Having=true.
 
-select_results(Distinct, Offset, Limit, SortBy, Result, Goal) :-
+select_results(Distinct, Offset, Limit, SortBy, Dataset, Result, Goal) :-
 	select_results(Distinct, [], true, [],
-		       Offset, Limit, SortBy, Result, Goal).
+		       Offset, Limit, SortBy, Dataset, Result, Goal).
 
 %%	select_results(+Distinct, +Group, +Having, +Aggregates,
-%%		       +Offset, +Limit, +SortBy, -Result, :Goal) is nondet.
+%%		       +Offset, +Limit, +SortBy, +Dataset:compound, -Result, :Goal) is nondet.
 %
 %	Select results for the  template   Result  on  backtracking over
 %	Goal.
@@ -92,14 +92,15 @@ select_results(Distinct, Offset, Limit, SortBy, Result, Goal) :-
 %
 %	@tbd	Group, Having and Aggregate are currently ignored.
 
-:- discontiguous select_results/9.
+:- discontiguous select_results/10.
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 1. ORDERED RESULTS WITHOUT AGGREGATES
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 select_results(Distinct, [], _:true, [], Offset, Limit,
-	       order_by(Cols), Result, Goal) :-
+	       order_by(Cols), Dataset, Result, Goal) :-
+gtrace,
 	exclude(ground, Cols, SortCols), SortCols \== [], !,
 	reverse(SortCols, RevSortCols),
 	group_order(RevSortCols, GroupedCols),
@@ -217,15 +218,16 @@ simple_literal(SL, SL).
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 select_results(Distinct, [], _:true, [], Offset, Limit,
-	       _Unsorted, Result, Goal) :- !,
-	select_results(Distinct, Offset, Limit, Result, Goal).
+	       _Unsorted, Dataset, Result, Goal) :- !,
+gtrace,
+	select_results(Distinct, Offset, Limit, Dataset, Result, Goal).
 
-%%	select_results(+Distinct, +Offset, +Limit, -Result, :Goal)
+%%	select_results(+Distinct, +Offset, +Limit, +Dataset:compound, -Result, :Goal)
 %
 %	Unsorted version. In this case we can avoid first collecting all
 %	results.
 
-select_results(distinct, Offset, Limit, Result, Goal) :- !,
+select_results(distinct, Offset, Limit, _Dataset, Result, Goal) :- !,
 	term_variables(Result, Vars),
 	V =.. [v|Vars],
 	empty_nb_set(Set),
@@ -235,9 +237,9 @@ select_results(distinct, Offset, Limit, Result, Goal) :- !,
 	   New == true,
 	   apply_limit(Counter, Offset, Limit, Last),
 	   ( Last == true -> ! ; true ).
-select_results(_, 0, inf, _, G) :- !,
+select_results(_, 0, inf, _, _Dataset, G) :- !,
 	G.
-select_results(_, Offset, Limit, _, G) :- !,
+select_results(_, Offset, Limit, _Dataset, _, G) :- !,
 	Counter = count(0),
 	G,
 	    apply_limit(Counter, Offset, Limit, Last),
@@ -291,7 +293,7 @@ variables Group and aggregate functions. This   implies  that we need to
 track the grouped variables as well  as   variables  that  are needed to
 compute the aggregates, but _no_ more.
 
-Q: Can we call select_results/9 recursively  with the iteration over the
+Q: Can we call select_results/10 recursively  with the iteration over the
 groups to get OrderBy, Offset and Limit working?
 
 Q: When do we need to apply Distinct? Before or after grouping?
@@ -301,7 +303,8 @@ output variables are already shared with it.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 select_results(_Distinct, [], Having, AggregateEval, _Offset, _Limit,
-	       _Order, _Result, Goal) :- !,
+	       _Order, Dataset, _Result, Goal) :- !,
+gtrace,
 	aggregate_vars(AggregateEval, Aggregates, AggVars, Eval),
 	AV =.. [a|AggVars],
 	findall(AV, Goal, Group),
@@ -309,7 +312,8 @@ select_results(_Distinct, [], Having, AggregateEval, _Offset, _Limit,
 	call(Eval),
 	call(Having).
 select_results(_Distinct, Group, Having, AggregateEval, _Offset, _Limit,
-	       _Order, _Result, Goal) :-
+	       _Order, Dataset, _Result, Goal) :-
+gtrace,
 	aggregate_vars(AggregateEval, Aggregates, AggVars, Eval),
 	GV =.. [v|Group],
 	AV =.. [a|AggVars],

@@ -32,7 +32,7 @@
 :- module(sparql,
 	  [ sparql_query/3,		% +Query, -Result, +Options
 	    sparql_compile/3,		% +Query, -Compiled, +Options
-	    sparql_run/2		% +Compiled, -Reply
+	    sparql_run/3		% +Compiled, +Dataset:compound, -Reply
 	  ]).
 :- use_module(library(option)).
 :- use_module(library(assoc)).
@@ -83,7 +83,7 @@
 
 sparql_query(Query, Reply, Options) :-
 	sparql_compile(Query, Compiled, Options),
-	sparql_run(Compiled, Reply).
+	sparql_run(Compiled, _, Reply).
 
 
 %%	sparql_compile(+Query, -Compiled, +Options)
@@ -275,58 +275,71 @@ optimise_annotated(sparql_eval(E,V), G) :- !,
 optimise_annotated(G, G).
 
 
-%%	sparql_run(+Compiled, -Reply) is nondet.
+pick_dataset(_, ProtocolDataset, ProtocolDataset):-
+  nonvar(ProtocolDataset), !.
+pick_dataset(QueryDataset, _, dataset(user,NamedGraphs)):-
+  var(QueryDataset), !,
+  findall(NamedGraph, rdf_graph(NamedGraph), NamedGraphs).
+pick_dataset(QueryDataset, _, QueryDataset).
+
+%%	sparql_run(+Compiled, ?Dataset:compound, -Reply) is nondet.
 %
 %	Runs a compiled SPARQL query, returning the result incrementally
 %	on backtracking. Provided there are  no   errors  in  the SPARQL
 %	implementation  the  only   errors   this    can   produce   are
 %	resource-related errors.
 
-sparql_run(sparql_query(Parsed, Reply, Module), Reply) :-
+sparql_run(sparql_query(Parsed, Reply, Module), Dataset, Reply) :-
 	sparql_reset_bnodes,
-	sparql_run(Parsed, Reply, Module).
+	sparql_run(Parsed, Dataset, Reply, Module).
 
-sparql_run(select(_Vars, _DataSets, Query, Solutions), Reply, Module) :-
-	select_results(Solutions, Reply, Module:Query).
-sparql_run(construct(Triples, _DataSets, Query, Solutions), Reply, Module) :-
-	select_results(Solutions, Reply,
+sparql_run(select(_Vars, QueryDataset, Query, Solutions), ProtocolDataset, Reply, Module) :-
+  pick_dataset(QueryDataset, ProtocolDataset, Dataset),
+	select_results(Solutions, Dataset, Reply, Module:Query).
+sparql_run(construct(Triples, QueryDataset, Query, Solutions), ProtocolDataset, Reply, Module) :-
+  pick_dataset(QueryDataset, ProtocolDataset, Dataset),
+	select_results(Solutions, Dataset, Reply,
 		       Module:( Query,
 				rdfql_triple_in(Reply, Triples)
 			      )).
-sparql_run(ask(_DataSets, Query, _Solutions), Result, Module) :-
+sparql_run(ask(QueryDataset, Query, _Solutions), ProtocolDataset, Result, Module) :-
+  pick_dataset(QueryDataset, ProtocolDataset, _Dataset),
 	(   Module:Query
 	->  Result = true
 	;   Result = false
 	).
-sparql_run(describe(IRIs, _DataSets, Query, Solutions), Reply, Module) :-
-	select_results(Solutions, Reply,
+sparql_run(describe(IRIs, QueryDataset, Query, Solutions), ProtocolDataset, Reply, Module) :-
+  pick_dataset(QueryDataset, ProtocolDataset, Dataset),
+	select_results(Solutions, Dataset, Reply,
 		       (   Module:Query,
 			   member(IRI, IRIs)
 		       )),
 	sparql_describe(IRI, Module, Reply).
-sparql_run(update(Updates), Result, Module) :-
-	(   Module:sparql_update(Updates)
+% @tbd SPARQL Update requests can specify a dataset
+%      with `USING` and `USING NAMED`.
+sparql_run(update(Updates), Dataset, Result, Module) :-
+	(   Module:sparql_update(Updates, Dataset)
 	->  Result = true
 	;   Result = false
 	).
 
-%%	select_results(+Spec, -Reply, :Goal)
+%%	select_results(+Spec, +Dataset:compound, -Reply, :Goal)
 %
 %	Apply ordering and limits on result-set.
 %
 %	@tbd	Handle =reduced=
 
-:- meta_predicate select_results(+,+,0).
-:- public select_results/3.		% used on sparql_subquery/4
+:- meta_predicate select_results(+,+,+,0).
+:- public select_results/4.		% used on sparql_subquery/4
 
 select_results(distinct(solutions(Group, Having, Agg, Order, Limit, Offset)),
-	       Reply, Goal) :- !,
+	       Dataset, Reply, Goal) :- !,
 	select_results(distinct, Group, Having, Agg, Offset, Limit,
-		       Order, Reply, Goal).
+		       Order, Dataset, Reply, Goal).
 select_results(solutions(Group, Having, Agg, Order, Limit, Offset),
-	       Reply, Goal) :-
+	       Dataset, Reply, Goal) :-
 	select_results(all, Group, Having, Agg, Offset, Limit,
-		       Order, Reply, Goal).
+		       Order, Dataset, Reply, Goal).
 
 
 %%	select_result(+Bindings, -Row, -Names) is det.

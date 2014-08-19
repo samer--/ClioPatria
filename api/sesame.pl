@@ -291,7 +291,7 @@ compile(Language, _, _, _) :-
 run(serql, Compiled, Reply) :-
 	serql_run(Compiled, Reply).
 run(sparql, Compiled, Reply) :-
-	sparql_run(Compiled, Reply).
+	sparql_run(Compiled, _, Reply).
 
 %%	extract_rdf(+Request)
 %

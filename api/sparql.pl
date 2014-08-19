@@ -66,7 +66,9 @@ sparql_query(Request) :-
 			]),
 	append(DefaultGraphs, NamedGraphs, Graphs),
 	authorized(read(Graphs, sparql)),
-	sparql_reply(Request, Query, Graphs, ReqFormat, Entailment).
+  % @tbd Merge default graphs?
+  default_graph(DefaultGraphs, DefaultGraph),
+	sparql_reply(Request, Query, dataset(DefaultGraph,NamedGraphs), ReqFormat, Entailment).
 
 
 %%	sparql_update(+Request)
@@ -81,8 +83,8 @@ sparql_update(Request) :-
 	memberchk(content_type(ContentType), Request),
 	sub_atom(ContentType, 0, _, _, 'application/sparql-update'), !,
 	http_parameters(Request,
-			['default-graph-uri'(DefaultGraphs),
-			 'named-graph-uri'(NamedGraphs),
+			['using-graph-uri'(DefaultGraphs),
+			 'using-named-graph-uri'(NamedGraphs),
 			  format(ReqFormat),
 			  entailment(Entailment)
 			],
@@ -91,14 +93,16 @@ sparql_update(Request) :-
 	append(DefaultGraphs, NamedGraphs, Graphs),
 	http_read_data(Request, Query, []),
 	authorized(write(Graphs, sparql)),
-	sparql_reply(Request, Query, Graphs, ReqFormat, Entailment).
+  % @tbd Merge default graphs?
+  default_graph(DefaultGraphs, DefaultGraph),
+	sparql_reply(Request, Query, dataset(DefaultGraph,NamedGraphs), ReqFormat, Entailment).
 % Perform a SPARQL update via POST with URL-encoded parameters.
 % @compat SPARQL 1.1 Protocol recommendation, section 2.2.1.
 sparql_update(Request) :-
 	http_parameters(Request,
 			[ update(Query),
-			  'default-graph-uri'(DefaultGraphs),
-			  'named-graph-uri'(NamedGraphs),
+			  'using-graph-uri'(DefaultGraphs),
+			  'using-named-graph-uri'(NamedGraphs),
 			  format(ReqFormat),
 			  entailment(Entailment)
 			],
@@ -106,16 +110,20 @@ sparql_update(Request) :-
 			]),
 	append(DefaultGraphs, NamedGraphs, Graphs),
 	authorized(write(Graphs, sparql)),
-	sparql_reply(Request, Query, Graphs, ReqFormat, Entailment).
+  % @tbd Merge default graphs?
+  default_graph(DefaultGraphs, DefaultGraph),
+	sparql_reply(Request, Query, dataset(DefaultGraph,NamedGraphs), ReqFormat, Entailment).
 
+default_graph([], user):- !.
+default_graph([DefaultGraph|_], DefaultGraph).
 
-%%	sparql_reply(+Request, +Query, +_Graphs, +ReqFormat, +Entailment)
+%%	sparql_reply(+Request, +Query, +Dataset:compound, +ReqFormat, +Entailment)
 %
 %	HTTP  handler  for  SPARQL  requests.    Mounted  the  http-path
 %	sparql(.)       (by       default        =|/sparql/|=,       see
 %	library(http/http_path)).
 
-sparql_reply(Request, Query, Graphs, ReqFormat, Entailment) :-
+sparql_reply(Request, Query, Dataset, ReqFormat, Entailment) :-
 	statistics(cputime, CPU0),
 	sparql_compile(Query, Compiled,
 		       [ type(Type),
@@ -123,11 +131,7 @@ sparql_reply(Request, Query, Graphs, ReqFormat, Entailment) :-
 			 distinct(Distinct),
 			 entailment(Entailment)
 		       ]),
-	(   Compiled = update(_)
-	->  authorized(write(Graphs, sparql))
-	;   true
-	),
-	findall(R, sparql_run(Compiled, R), Rows),
+	findall(R, sparql_run(Compiled, Dataset, R), Rows),
 	statistics(cputime, CPU1),
 	CPU is CPU1 - CPU0,
 	output_format(ReqFormat, Request, Format),

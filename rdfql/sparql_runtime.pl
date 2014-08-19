@@ -34,7 +34,7 @@
 	    sparql_eval_raw/2,		% +Expression, -Value
 	    sparql_simplify/2,		% :Goal, -SimpleGoal
 	    sparql_subquery/3,		% +Proj, +Query, +Sols
-	    sparql_update/1,		% +UpdateRequest
+	    sparql_update/2,		% +UpdateRequest, +Dataset:compound
 	    sparql_find/5,		% ?From, ?To, ?F, ?T, :Q
 	    sparql_minus/2,		% :Pattern1, :Pattern2
 	    sparql_group/1,		% :Query
@@ -62,7 +62,7 @@
 	sparql_group(0),
 	sparql_group(0, +, +),
 	sparql_subquery(+, 0, +),
-	sparql_update(:).
+	sparql_update(:,+).
 
 /** <module> SPARQL runtime support
 
@@ -1551,9 +1551,13 @@ peval(Resource, Resource, true) :-
 sparql_subquery(Proj, Query, Solutions) :-
 	vars_in_bindings(Proj, Vars),
 	Reply =.. [row|Vars],
-	sparql:select_results(Solutions, Reply, Query),
+	default_dataset(Dataset),
+	sparql:select_results(Solutions, Dataset, Reply, Query),
 	debug(sparql(subquery), 'SubQuery result: ~q', [Proj]),
 	unify_projection(Proj).
+
+default_dataset(dataset(user,NamedGraphs)):-
+  findall(NamedGraph, rdf_graph(NamedGraph), NamedGraphs).
 
 vars_in_bindings([], []).
 vars_in_bindings([_Outer=Var|T0], [Var|T]) :-
@@ -1569,29 +1573,31 @@ unify_projection([V=V|T]) :-
 		 *	      UPDATE		*
 		 *******************************/
 
-%%	sparql_update(:Updates) is det.
+%%	sparql_update(:Updates, +Dataset:compound) is det.
 %
 %	Handle SPARQL update requests.
 %
 %	@tbd	Realise authorization rules
 
-sparql_update(Module:Updates) :-
-	rdf_transaction(update(Updates, Module), 'SPARQL').
+sparql_update(Module:Updates, Dataset) :-
+	rdf_transaction(update(Updates, Module, Dataset), 'SPARQL').
 
-update([], _).
-update([H|T], M) :-
-	update(H, M),
-	update(T, M).
-update(insert_data(Quads), _) :-
-	maplist(insert_triple(user), Quads).
-update(delete_data(Quads), _) :-
-	maplist(delete_triple(user), Quads).
-update(add(_Silent, From, To), _) :-	% TBD: Error of From does not exist
+update([], _, _).
+update([H|T], M, Dataset) :-
+	update(H, M, Dataset),
+	update(T, M, Dataset).
+% @tbd Triples can only be inserted in the default graph.
+update(insert_data(Quads), _, dataset(DefaultGraph,_)) :-
+	maplist(insert_triple(DefaultGraph), Quads).
+% @tbd Triples can only be deleted from the default graph.
+update(delete_data(Quads), _, dataset(DefaultGraph,_)) :-
+	maplist(delete_triple(DefaultGraph), Quads).
+update(add(_Silent, From, To), _, _) :-	% TBD: Error of From does not exist
 	db(From, FromDB),
 	db(To, ToDB),
 	forall(rdf(S,P,O,FromDB:Line),
 	       rdf_assert(S,P,O,ToDB:Line)).
-update(move(_Silent, From, To), _) :-
+update(move(_Silent, From, To), _, _) :-
 	db(From, FromGraph),
 	db(To, ToGraph),
 	rdf_retractall(_,_,_,ToGraph),
@@ -1599,22 +1605,22 @@ update(move(_Silent, From, To), _) :-
 	       ( rdf_retractall(S,P,O,FromGraph:Line),
 		 rdf_assert(S,P,O,ToGraph:Line)
 	       )).
-update(copy(_Silent, From, To), _) :-
+update(copy(_Silent, From, To), _, _) :-
 	db(From, FromGraph),
 	db(To, ToGraph),
 	rdf_retractall(_,_,_,ToGraph),
 	forall(rdf(S,P,O,FromGraph:Line),
 	       rdf_assert(S,P,O,ToGraph:Line)).
-update(modify(With, Modify, _Using, Query), Module) :-
+update(modify(With, Modify, _Using, Query), Module, _) :-
 	db(With, Graph),
 	forall(Module:Query,
 	       modify(Modify, Graph)).
-update(load(_Silent, URI, Into), _) :-
+update(load(_Silent, URI, Into), _, _) :-
 	(   Into = graph(Graph)
 	->  rdf_load(URI, [graph(Graph)])
 	;   rdf_load(URI)
 	).
-update(clear(_Silent, Clear), _) :-
+update(clear(_Silent, Clear), _, _) :-
 	clear_db(Clear).
 
 db(default, user).
@@ -1633,10 +1639,9 @@ modify(replace(Delete, Insert), Graph) :-
 insert_triple(Graph, rdf(S,P,O0)) :- !,
 	modify_object(O0, O),
 	rdf_assert(S,P,O, Graph).
-insert_triple(_, rdf(S,P,O0,G0)) :-
+insert_triple(_, rdf(S,P,O,G0)) :-
 	graph(G0, G),
-	modify_object(O0, O),
-	rdf_assert(S,P,O,G).
+  insert_triple(G, rdf(S,P,O)).
 
 %%	delete_triple(+Graph, +Triple) is det.
 %
@@ -1645,10 +1650,9 @@ insert_triple(_, rdf(S,P,O0,G0)) :-
 delete_triple(Graph, rdf(S,P,O0)) :- !,
 	modify_object(O0, O),
 	rdf_retractall(S,P,O,Graph).
-delete_triple(_, rdf(S,P,O0,G0)) :- !,
+delete_triple(_, rdf(S,P,O,G0)) :- !,
 	graph(G0, G),
-	modify_object(O0, O),
-	rdf_retractall(S,P,O,G).
+  delete_triple(G, rdf(S,P,O)).
 
 modify_object(literal(_Q,V), literal(V)) :- !.
 modify_object(O, O).

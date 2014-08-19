@@ -169,14 +169,19 @@ serql_run(select(Goal, Solutions), Reply, Module) :-
 serql_run(construct(Goal, Solutions), Reply, Module) :-
 	select_results(Solutions, Reply, Module:Goal).
 
+default_dataset(dataset(user,NamedGraphs)):-
+  findall(NamedGraph, rdf_graph(NamedGraph), NamedGraphs).
+
 %%	select_results(+Spec, -Reply, :Goal)
 %
 %	Apply ordering and limits on result-set.
 
 select_results(distinct(solutions(Order, Limit, Offset)), Reply, Goal) :- !,
-	select_results(distinct, Offset, Limit, Order, Reply, Goal).
+  default_dataset(Dataset),
+	select_results(distinct, Offset, Limit, Dataset, Order, Reply, Goal).
 select_results(solutions(Order, Limit, Offset), Reply, Goal) :-
-	select_results(all, Offset, Limit, Order, Reply, Goal).
+  default_dataset(Dataset),
+	select_results(all, Offset, Limit, Order, Dataset, Reply, Goal).
 
 
 		 /*******************************

@@ -48,7 +48,7 @@
 	    sparql_group/1,		% :Query
 	    sparql_group/3,		% :Query, +OuterVars, +InnerVars
 	    sparql_subquery/3,		% +Proj, +Query, +Solutions
-	    sparql_update/1		% +Updates
+	    sparql_update/2		% +Updates
 	  ]).
 :- use_module(library(nb_set)).
 :- use_module(library(debug)).
