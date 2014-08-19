@@ -1636,12 +1636,20 @@ modify(replace(Delete, Insert), Graph) :-
 
 %%	insert_triple(+Graph, +Triple) is det.
 
-insert_triple(Graph, rdf(S,P,O0)) :- !,
-	modify_object(O0, O),
-	rdf_assert(S,P,O, Graph).
+insert_triple(Graph, rdf(S1,P,O0)) :- !,
+	modify_object(O0, O1),
+  maplist(bnode_map, [S1,O1], [S2,O2]),
+	rdf_assert(S2,P,O2, Graph).
 insert_triple(_, rdf(S,P,O,G0)) :-
 	graph(G0, G),
   insert_triple(G, rdf(S,P,O)).
+
+bnode_map(bnode(X), Y):-
+  bnode_store(X, Y), !.
+bnode_map(bnode(X), Y):- !,
+  rdf_bnode(Y),
+  assert(bnode_store(X, Y)).
+bnode_map(X, X).
 
 %%	delete_triple(+Graph, +Triple) is det.
 %
