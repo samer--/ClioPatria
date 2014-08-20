@@ -12,3 +12,4 @@ doc/serql.tex
 run.pl
 config-enabled
 cpack-mirrors
+daemon.pl
