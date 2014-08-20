@@ -215,7 +215,15 @@ sparql_decl('default-graph-uri',
 	    [ list(atom),
 	      description('The default graph(s) to query (not supported)')
 	    ]).
+sparql_decl('using-graph-uri',
+	    [ list(atom),
+	      description('The default graph(s) to query (not supported)')
+	    ]).
 sparql_decl('named-graph-uri',
+	    [ list(atom),
+	      description('Additional named graph(s) to query (not supported)')
+	    ]).
+sparql_decl('using-named-graph-uri',
 	    [ list(atom),
 	      description('Additional named graph(s) to query (not supported)')
 	    ]).

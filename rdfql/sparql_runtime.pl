@@ -1592,7 +1592,7 @@ update(insert_data(Quads), _, dataset(DefaultGraph,[])) :- !,
 update(insert_data(Quads), _, dataset(_,NamedGraphs)) :-
   forall(
     member(NamedGraph, NamedGraphs),
-    maplist(insert_triple(DefaultGraph), Quads)
+    maplist(insert_triple(NamedGraph), Quads)
   ).
 % @tbd Dataset handling.
 update(delete_data(Quads), _, dataset(DefaultGraph,[])) :- !,
@@ -1600,7 +1600,7 @@ update(delete_data(Quads), _, dataset(DefaultGraph,[])) :- !,
 update(delete_data(Quads), _, dataset(_,NamedGraphs)) :-
   forall(
     member(NamedGraph, NamedGraphs),
-    maplist(delete_triple(DefaultGraph), Quads)
+    maplist(delete_triple(NamedGraph), Quads)
   ).
 update(add(_Silent, From, To), _, _) :-	% TBD: Error of From does not exist
 	db(From, FromDB),
