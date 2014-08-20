@@ -1586,12 +1586,22 @@ update([], _, _).
 update([H|T], M, Dataset) :-
 	update(H, M, Dataset),
 	update(T, M, Dataset).
-% @tbd Triples can only be inserted in the default graph.
-update(insert_data(Quads), _, dataset(DefaultGraph,_)) :-
+% @tbd Dataset handling.
+update(insert_data(Quads), _, dataset(DefaultGraph,[])) :- !,
 	maplist(insert_triple(DefaultGraph), Quads).
-% @tbd Triples can only be deleted from the default graph.
-update(delete_data(Quads), _, dataset(DefaultGraph,_)) :-
+update(insert_data(Quads), _, dataset(_,NamedGraphs)) :-
+  forall(
+    member(NamedGraph, NamedGraphs),
+    maplist(insert_triple(DefaultGraph), Quads)
+  ).
+% @tbd Dataset handling.
+update(delete_data(Quads), _, dataset(DefaultGraph,[])) :- !,
 	maplist(delete_triple(DefaultGraph), Quads).
+update(delete_data(Quads), _, dataset(_,NamedGraphs)) :-
+  forall(
+    member(NamedGraph, NamedGraphs),
+    maplist(delete_triple(DefaultGraph), Quads)
+  ).
 update(add(_Silent, From, To), _, _) :-	% TBD: Error of From does not exist
 	db(From, FromDB),
 	db(To, ToDB),

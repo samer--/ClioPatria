@@ -100,7 +100,6 @@ select_results(Distinct, Offset, Limit, SortBy, Dataset, Result, Goal) :-
 
 select_results(Distinct, [], _:true, [], Offset, Limit,
 	       order_by(Cols), Dataset, Result, Goal) :-
-gtrace,
 	exclude(ground, Cols, SortCols), SortCols \== [], !,
 	reverse(SortCols, RevSortCols),
 	group_order(RevSortCols, GroupedCols),
@@ -219,7 +218,6 @@ simple_literal(SL, SL).
 
 select_results(Distinct, [], _:true, [], Offset, Limit,
 	       _Unsorted, Dataset, Result, Goal) :- !,
-gtrace,
 	select_results(Distinct, Offset, Limit, Dataset, Result, Goal).
 
 %%	select_results(+Distinct, +Offset, +Limit, +Dataset:compound, -Result, :Goal)
@@ -304,7 +302,6 @@ output variables are already shared with it.
 
 select_results(_Distinct, [], Having, AggregateEval, _Offset, _Limit,
 	       _Order, Dataset, _Result, Goal) :- !,
-gtrace,
 	aggregate_vars(AggregateEval, Aggregates, AggVars, Eval),
 	AV =.. [a|AggVars],
 	findall(AV, Goal, Group),
@@ -313,7 +310,6 @@ gtrace,
 	call(Having).
 select_results(_Distinct, Group, Having, AggregateEval, _Offset, _Limit,
 	       _Order, Dataset, _Result, Goal) :-
-gtrace,
 	aggregate_vars(AggregateEval, Aggregates, AggVars, Eval),
 	GV =.. [v|Group],
 	AV =.. [a|AggVars],
