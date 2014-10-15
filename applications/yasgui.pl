@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        J.Wielemaker@cs.vu.nl
     WWW:           http://www.swi-prolog.org
-    Copyright (C): 2013 VU University Amsterdam
+    Copyright (C): 2013-2014 VU University Amsterdam
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -27,84 +27,141 @@
     the GNU General Public License.
 */
 
-:- module(yasgui, []).
+:- module(yasgui,
+	  [ has_yasgui/0
+	  ]).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/html_write)).
 :- use_module(library(http/js_write)).
-:- use_module(library(http/json)).
-:- use_module(library(settings)).
-:- use_module(library(http/http_host)).
+:- use_module(library(http/http_server_files)).
+:- use_module(library(http/html_head)).
 
-:- http_handler(yasgui('index.html'), yasgui_editor, []).
+:- use_module(api(json)).		% get /json/prefixes
 
-:- setting(server, uri, 'http://yasgui.laurensrietveld.nl',
-	   'YASGUI server to use').
+:- http_handler(yasgui('index.html'), yasgui_editor, [id(yasgui)]).
+:- http_handler(yasqe(.), serve_files_in_directory(yasqe), [prefix]).
+:- http_handler(yasr(.), serve_files_in_directory(yasr), [prefix]).
 
 %%	yasgui_editor(+Request)
 %
 %	HTTP handler that presents the YASGUI SPARQL editor.
 
-yasgui_editor(Request) :-
-	yasgui_src_url(Request, Src),
+yasgui_editor(_Request) :-
+	has_yasgui, !,
 	reply_html_page(
 	    cliopatria(plain),
 	    title('YASGUI SPARQL Editor'),
-	    \yasgui_page(Src)).
+	    \yasgui_page).
+yasgui_editor(_Request) :-
+	reply_html_page(cliopatria(default),
+			title('No YASQE/YASR installed'),
+			\no_yasgui).
 
-yasgui_page(Src) -->
-	html(iframe([ class(yasgui),
-		      src(Src),
-		      width('100%'),
-		      height('100%'),
-		      frameborder(0)
-		    ], [])),
-	js_script({|javascript||
+
+%%	has_yasgui is semidet.
+%
+%	True if the YASGUI SPARQL editor is installed.
+
+has_yasgui :-
+	Options = [ access(read), file_errors(fail) ],
+	absolute_file_name(yasqe('yasqe.min.js'), _, Options),
+	absolute_file_name(yasr('yasr.min.js'), _, Options).
+
+
+yasgui_page -->
+	{ http_link_to_id(sparql_query, [], SparqlLocation),
+	  http_link_to_id(json_prefixes, [], JSONPrefixes),
+	  http_link_to_id(list_resource, [], ListResource)
+	},
+	html_requires(yasqe('yasqe.min.js')),
+	html_requires(yasqe('yasqe.min.css')),
+	html_requires(yasr('yasr.min.js')),
+	html_requires(yasr('yasr.min.css')),
+	html([ div(id(yasqe), []),
+	       div(id(yasr), [])
+	     ]),
+
+	js_script({|javascript(SparqlLocation, JSONPrefixes, ListResource)||
 		   window.onload=function(){
-		     document.body.style.height="100%";
-                     document.getElementsByTagName("html")[0].style.height="100%";
-		     document.getElementById("cp-content").style.height="90%";
-		   };
+  var yasqe = YASQE(document.getElementById("yasqe"), {
+				 sparql: { endpoint: SparqlLocation,
+					   showQueryButton: true
+					 }
+			     });
+
+  var serverPrefixes;			// TBD: re-fetch if out-of-date?
+
+  function usedPrefixes() {
+    var prefixmap = yasqe.getPrefixesFromQuery();
+    if ( serverPrefixes ) {
+      for(var key in serverPrefixes) {
+	var yasrKey = key+":";
+        if ( !prefixmap[yasrKey] )
+	  prefixmap[yasrKey] = serverPrefixes[key];
+      }
+    }
+    return prefixmap;
+  }
+
+  YASR.plugins.table.defaults.handlers.onCellClick = function(td, event) {
+    var href = $(td).find("a").attr("href");
+
+    if (href) {
+      window.location = ListResource + "?r=" + encodeURIComponent(href);
+      event.preventDefault();
+    }
+  };
+
+  var yasr = {};
+
+  $.ajax({ url: JSONPrefixes,
+	   dataType: "json",
+	   contentType: 'application/json',
+	   success: function(data, status) {
+			serverPrefixes = data;
+		    },
+	   complete: function() {
+			yasr = YASR(document.getElementById("yasr"), {
+			  getUsedPrefixes: usedPrefixes
+			});
+		     }
+	 });
+
+  /**
+  * Set some of the hooks to link YASR and YASQE
+  */
+
+  yasqe.options.sparql.handlers.success = function(data, textStatus, xhr) {
+    yasr.setResponse({response: data, contentType: xhr.getResponseHeader("Content-Type")});
+  };
+
+  yasqe.options.sparql.handlers.error = function(xhr, textStatus, errorThrown) {
+    var exceptionMsg = textStatus + " (response status code " + xhr.status + ")";
+    if (errorThrown && errorThrown.length)
+      exceptionMsg += ": " + errorThrown;
+    yasr.setResponse({exception: exceptionMsg});
+  };
+};
 		   |}).
 
 
-yasgui_src_url(Request, Src) :-
-	http_link_to_id(sparql_query, [], SparqlLocation),
-	public_url(Request, SparqlLocation, EndPoint),
-	yasgui_config(EndPoint, Config),
-	setting(server, YASGuiServer),
-	uri_query_components(Query, [jsonSettings=Config]),
-	format(atom(Src), '~w?~w', [YASGuiServer, Query]).
-
-
-yasgui_config(EndPoint, Config) :-
-	JSON = json([ defaults = json([ endpoint = EndPoint
-				      ]),
-		      singleEndpointMode = @(true),
-		      defaultBookMarks = [ json([ title = 'Get 10 triples',
-						  endpoint = '',
-						  query = 'SELECT * WHERE {\n\c
-							   ?s ?p ?o\n\c
-							   } LIMIT 10'
-						])
-					 ]
-		    ]),
-	atom_json_term(Config, JSON, [as(atom)]).
-
-
-%%	public_url(+Request, +Location, -URL) is det.
+%%	no_yasgui//
 %
-%	True when URL is an  absolute  URL   for  the  Location  on this
-%	server.
+%	Display a message indicating the user how to install YASQE/YASR
 
-public_url(Request, Location, URL) :-
-	http_current_host(Request, Host, Port, [global(true)]),
-	setting(http:public_scheme, Scheme),
-	(   scheme_port(Scheme, Port)
-	->  format(atom(URL), '~w://~w~w', [Scheme, Host, Location])
-	;   format(atom(URL), '~w://~w:~w~w', [Scheme, Host, Port, Location])
-	).
-
-scheme_port(http, 80).
-scheme_port(https, 443).
-
-
+no_yasgui -->
+	{ absolute_file_name(cliopatria(.), CD0,
+			     [ file_type(directory),
+			       access(read)
+			     ]),
+	  prolog_to_os_filename(CD0, ClioHome)
+	},
+	html_requires(pldoc),
+	html([ h1('YASGUI (YASQE and YASR) is not installed'),
+	       p([ 'Please run the following command in the ClioPatria ',
+		   'installation directory "~w" to install YASQE/YASR.'-[ClioHome]
+		 ]),
+	       pre(class(code),
+		   [ 'git submodule update --init web/yasqe web/yasr'
+		   ])
+	     ]).
