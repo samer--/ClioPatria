@@ -32,7 +32,8 @@
 	    graph_as_resource//2,	% +Graph, +Options
 	    graph_actions//1,		% +Graph
 	    list_resource//2,		% +URI, +Options
-	    context_graph//2		% +URI, +Options
+	    context_graph//2,	% +URI, +Options
+       query_lod//1
 	  ]).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_parameters)).
@@ -1202,10 +1203,15 @@ local_view(URI, Graph, Options) -->
 	{ option(top_max(TopMax), Options, 500),
 	  option(bottom_max(BottomMax), Options, 500),
 	  po_pairs(URI, Graph, Pairs, Options),
-	  lview_graphs(URI, Graph, Graphs)
+	  lview_graphs(URI, Graph, Graphs),
+     length(Pairs,NumPairs)
 	},
-	(   { Pairs \== []
-	    }
+
+   (  cliopatria:resource_crawler(URI,NumPairs) -> []
+   ;  {NumPairs=0} -> query_lod(URI)
+   ;  []
+   ),
+   (   { NumPairs>0}
 	->  html_requires(css('rdf.css')),
 	    html(table(class(block),
 		       [ \lview_header(Options)
@@ -1214,7 +1220,11 @@ local_view(URI, Graph, Options) -->
 						TopMax, BottomMax)
 		       ])),
 	    graph_footnotes(Graphs, Options)
-	;   { lod_uri_graph(URI, LODGraph),
+   ;   html("No triples for this URI.")
+   ).
+
+query_lod(URI) -->
+	(   { lod_uri_graph(URI, LODGraph),
 	      rdf_graph(LODGraph)
 	    }
 	->  html(p([ 'No triples for ', a(href(URI), 'this URI'), '. ',
@@ -1224,16 +1234,13 @@ local_view(URI, Graph, Options) -->
 	;   { http_link_to_id(lod_crawl, [], FetchURL),
 	      http_current_request(Request),
 	      memberchk(request_uri(Here), Request)
-	    },
+	    }, 
 	    html(form(action(FetchURL),
-		      [ \hidden(r, URI),
-			\hidden(return_to, Here),
-			'No triples for ', a(href(URI), 'this URI'),
-			'.  Would you like to ',
-			input([ type(submit),
-				value('Query the Linked Data cloud')
-			      ]),
-			'?'
+		      [  \hidden(r, URI),
+		         \hidden(return_to, Here),
+               'No triples for ', a(href(URI), 'this URI'), '. ',
+			      'Would you like to ',
+			      input([ type(submit), value('Query the Linked Data cloud') ]), '?'
 		      ]))
 	).
 

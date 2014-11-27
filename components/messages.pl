@@ -75,8 +75,12 @@ call_showing_messages(Goal, Options) :-
 	(   option(footer(Footer), Options)
 	->  true
 	;   (   option(return_to(ReturnURI), Options)
-	    ->  FooterRest = [ p(['Go ', a(href(ReturnURI), 'back'),
-				  ' to the previous page']) ]
+	    ->  (   option(return_after(Timeout), Options)
+           ->  format(string(T),"~d;~w",[Timeout,ReturnURI]),
+               FooterRest = [ p(['Going ', a(href(ReturnURI), 'back'), ' automatically in ~d seconds.'-Timeout])
+                            , \html_post(head,meta(['http-equiv'=refresh,content=T],[])) ]
+           ;   FooterRest = [ p(['Go ', a(href(ReturnURI), 'back'), ' to the previous page']) ]
+           )
 	    ;	FooterRest = []
 	    ),
 	    Footer = div(class(msg_footer), [ h4('Done') | FooterRest ])
@@ -86,7 +90,7 @@ call_showing_messages(Goal, Options) :-
 	header(Style, Head, Header, Footer, FooterTokens),
 	setup_call_cleanup(
 	    set_prolog_flag(html_messages, true),
-	    catch(Goal, E, print_message(error, E)),
+	    catch(Goal, (E,Success=true), (print_message(error, E),Success=false)),
 	    set_prolog_flag(html_messages, false)), !,
 	footer(FooterTokens).
 

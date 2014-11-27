@@ -72,6 +72,7 @@ The example below adds an item to =Help= popup of ClioPatria:
 	resource_link/2,		% +URI, -URL
 
 	list_resource//2,		% +URI, +Options
+   resource_crawler//2, % +URI, +NumTriples
 
 	user_preference_db/2,		% ?Property, ?Value
 	user_preference_default/2,	% ?Property, ?Value
