@@ -116,16 +116,12 @@ user:body(pldoc(wiki), Content) -->
 			       access(read)
 			     ])
 	},
-	html_requires(cliopatria),
-	html(body(class('yui-skin-sam cliopatria'),
-		  [ div(class(menu), \cp_menu),
-		    br(clear(all)),
-		    div(class(content),
-			[ \doc_links(Dir, [])
-			| Content
-			]),
-		    \server_address('ClioPatria')
-		  ])).
+   user:body(pldoc(default), [ \(pldoc_index:doc_links(Dir, [])) | Content ]).
+
+% SA: added to allow customisation of help page style
+user:body(pldoc(Style), Content) -->
+   cliopatria:page_body(pldoc(Style), Content), !.
+
 user:body(pldoc(_), Content) -->
 	html_requires(cliopatria),
 	html(body(class('yui-skin-sam cliopatria'),

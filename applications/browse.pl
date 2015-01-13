@@ -1163,27 +1163,39 @@ as_object(URI, Graph) -->
 
 as_object_locations([], _URI, _) --> !,
 	html([ 'The resource does not appear as an object' ]).
-as_object_locations([S-P], URI, _) --> !,
-	html([ 'The resource appears as object in one triple:',
-	       blockquote(class(triple),
-			  [ '{ ',
-			    \rdf_link(S), ', ',
-			    \rdf_link(P, []), ', ',
-			    \rdf_link(URI),
-			    ' }'
-			  ])
-	     ]).
-as_object_locations(List, URI, Graph) --> !,
-	{ length(List, Len),
-	  (   var(Graph)
-	  ->  Extra = []
-	  ;   Extra = [graph=Graph]
-	  ),
-	  http_link_to_id(list_triples_with_object, [r=URI|Extra], Link)
-	},
-	html([ 'The resource appears as object in ',
-	       a(href(Link), [Len, ' triples'])
-	     ]).
+
+% SA: I WANT TO SEE OBJECT TRIPLE HERE
+%
+% as_object_locations([S-P], URI, _) --> !,
+% 	html([ 'The resource appears as object in one triple:',
+% 	       blockquote(class(triple),
+% 			  [ '{ ',
+% 			    \rdf_link(S), ', ',
+% 			    \rdf_link(P, []), ', ',
+% 			    \rdf_link(URI),
+% 			    ' }'
+% 			  ])
+% 	     ]).
+% as_object_locations(List, URI, Graph) --> !,
+% 	{ length(List, Len),
+% 	  (   var(Graph)
+% 	  ->  Extra = []
+% 	  ;   Extra = [graph=Graph]
+% 	  ),
+% 	  http_link_to_id(list_triples_with_object, [r=URI|Extra], Link)
+% 	},
+% 	html([ 'The resource appears as object in ',
+% 	       a(href(Link), [Len, ' triples'])
+% 	     ]).
+
+as_object_locations(Pairs, URI, Graph) --> !,
+   {  rdf_global_id(rdf:type,RDFType), dif(P,RDFType), 
+      findall(S-P,member(S-P,Pairs),Pairs1),
+      sort_pairs_by_label(Pairs1, Sorted),
+      length(Pairs1, Count) },
+   html( [ h3(\otriple_header(Count, URI, _, Graph)),
+			  \otriple_table(Sorted, URI, [resource_format(nslabel)])
+			]).
 
 %%	local_view(+URI, ?Graph, +Options) is det.
 %
@@ -1207,7 +1219,7 @@ local_view(URI, Graph, Options) -->
      length(Pairs,NumPairs)
 	},
 
-   (  cliopatria:resource_crawler(URI,NumPairs) -> []
+   (  {\+rdf_graph(URI)}, cliopatria:resource_crawler(URI,NumPairs) -> []
    ;  {NumPairs=0} -> query_lod(URI)
    ;  []
    ),
