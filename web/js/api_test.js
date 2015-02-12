@@ -34,7 +34,7 @@ function apiRequest(sPath, sSearchString) {
         sHTML += sLink;
         sHTML += "</div>";
 
-        sHTML += "<div class='result' style='max-width:800px;max-height:500px;overflow:auto'>\n";
+        sHTML += "<div class='result' style='max-width:800px;max-height:420px;overflow:auto'>\n";
 //	if ( oResponse.responseText.match(/<html>(.|\n)*<\/html>/im) ) {
 	if ( oResponse.responseText.match(/<html>/i) ) {
 	    sHTML += oResponse.responseText;
