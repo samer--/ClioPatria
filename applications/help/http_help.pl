@@ -194,11 +194,11 @@ help_on_handler(Request) :-
 				   ])
 			]),
 	(   http_current_handler(Path, M:H, Options)
-	->  reply_html_page([],
+	->  reply_html_page(cliopatria(bare(http_doc)), [],
 			    [ h1(['HTTP location ', Path]),
 			      \handler(Request, Path, M:H, Options)
 			    ])
-	;   reply_html_page([],
+	;   reply_html_page(cliopatria(bare(http_doc)), [],
 			    [ h4(['No handler for ', Path])
 			    ])
 	).
@@ -364,10 +364,10 @@ dispatch_item(_) -->
 %	Provide help on the parameters
 
 parameter_table([]) --> !,
-	html(p(class(http_parameters),
+	html(p(class(alt_http_parameters),
 	       'Request does not handle parameters')).
 parameter_table(Params) -->
-	html([ table(class(http_parameters),
+	html([ table(class(alt_http_parameters),
 		     [ tr([th('Name'), th('Type'), th('Default'), th('Description')])
 		     | \parameters(Params, 1)
 		     ])
