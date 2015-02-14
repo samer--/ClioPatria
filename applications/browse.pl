@@ -818,6 +818,7 @@ list_predicate_resources(Request) :-
 						    ])
 			]).
 
+pred_resource_options(_, object, [resource_format(nslabel)]) :- !.
 pred_resource_options(_, domain, [label('Class')]) :- !.
 pred_resource_options(_, range, [label('Class')]) :- !.
 pred_resource_options(_, _, []).
@@ -1194,7 +1195,7 @@ as_object_locations(Pairs, URI, Graph) --> !,
       sort_pairs_by_label(Pairs1, Sorted),
       length(Pairs1, Count) },
    html( [ h3(\otriple_header(Count, URI, _, Graph)),
-			  \otriple_table(Sorted, URI, [resource_format(nslabel)])
+			  \otriple_table(Sorted, URI, [resource_format(nslabel),top_max(100),bottom_max(100)])
 			]).
 
 %%	local_view(+URI, ?Graph, +Options) is det.
