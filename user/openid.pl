@@ -85,24 +85,31 @@ http_openid:openid_hook(trusted(OpenID, Server)) :-
 
 :- http_handler(openid(login), login_page, [priority(10)]).
 
+:- multifile insecure_host/1.
+
 %%	login_page(+Request)
 %
 %	HTTP Handler that shows both OpenID   login and local login-page
 %	to the user. This handler overrules the default OpenID handler.
 
 login_page(Request) :-
-	http_open_session(_, []),		% we need sessions to login
-	http_parameters(Request,
-			[ 'openid.return_to'(ReturnTo,
-					     [ description('Page to visit after login')
-					     ])
-			]),
-	reply_html_page(cliopatria(default),
-			title('Login'),
-			[ \explain_login(ReturnTo),
-			  \cond_openid_login_form(ReturnTo),
-			  \local_login(ReturnTo)
-			]).
+   (  member(x_forwarded_host(Host),Request),
+      insecure_host(Host)
+   -> reply_html_page(cliopatria(default), title('Login'),
+			[ p('Login from public website ~w disabled.'-Host) ])
+   ;  http_open_session(_, []),		% we need sessions to login
+      http_parameters(Request,
+            [ 'openid.return_to'(ReturnTo,
+                       [ description('Page to visit after login')
+                       ])
+            ]),
+      reply_html_page(cliopatria(default),
+            title('Login'),
+            [ \explain_login(ReturnTo),
+              \cond_openid_login_form(ReturnTo),
+              \local_login(ReturnTo)
+            ])
+   ).
 
 explain_login(ReturnTo) -->
 	{ parse_url(ReturnTo, Parts),
