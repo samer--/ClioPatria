@@ -46,6 +46,7 @@ function apiRequest(sPath, sSearchString) {
 
         apiPanel.setBody(sHTML);
         apiPanel.center();
+        apiPanel.cfg.setProperty("y",apiPanel.cfg.getProperty("y")-40);
         apiPanel.show();
     }
     function failureHandler(oResponse) {
