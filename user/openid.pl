@@ -139,7 +139,7 @@ local_login(ReturnTo) -->
 			  method('GET')
 			],
 			[ \hidden('openid.return_to', ReturnTo),
-			  div(input([name(user), size(20)])),
+			  div(input([name(user), size(20), type(text)])),
 			  div([ input([name(password), size(20), type(password)]),
 				input([type(submit), value('login')])
 			      ])

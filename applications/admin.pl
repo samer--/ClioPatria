@@ -226,7 +226,7 @@ new_user_form(Options) -->
 			  ],
 			  [ \realname(Options),
 			    \input(user,     'Login',
-				   UserOptions),
+				   [type(text) | UserOptions]),
 			    \input(pwd1,     'Password',
 				   [type(password)]),
 			    \input(pwd2,     'Retype',
@@ -551,7 +551,7 @@ change_password_form(User) -->
 		  ])).
 
 user_or_old(admin) --> !,
-	input(user, 'User', []).
+	input(user, 'User', [type(text)]).
 user_or_old(_) -->
 	input(pwd0, 'Old password', [type(password)]).
 
@@ -614,7 +614,8 @@ login_form(_Request) :-
 				 method('POST')
 			       ],
 			       table([ tr([ th(align(right), 'User:'),
-					    td(input([ name(user),
+					    td(input([ type(text),
+                         name(user),
 						       size(40)
 						     ]))
 					  ]),
