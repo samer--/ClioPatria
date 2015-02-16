@@ -149,7 +149,7 @@ odd_even_row(Row, Next, Content) -->
 %	call creates a =th= element holding an   =a=. The =a= has either
 %	CSS class =sorted= if the column is   sorted  or =resort= if the
 %	column can be sorted on this column.   The use of this component
-%	demands that the handler processes the parameter =sort_by= using
+%	demands that the handler processes the parameter =sortBy= using
 %	the field-name as argument.
 %
 %	@param	Field is the field-name that describes the sort on this
@@ -159,12 +159,12 @@ odd_even_row(Row, Next, Content) -->
 %	@param  Label is the label of the =a= element
 
 sort_th(Name, Name, Label) -->
-	html(th(a([class(sorted)], Label))).
+	html(th([class(sorted)], Label)).
 sort_th(Name, _By, Label) -->
 	{ http_current_request(Request),
-	  http_reload_with_parameters(Request, [sort_by(Name)], HREF)
+	  http_reload_with_parameters(Request, [sortBy(Name)], HREF)
 	},
-	html(th(a([href(HREF), class(resort)], Label))).
+	html(th(class(resort),a(href(HREF), Label))).
 
 
 		 /*******************************

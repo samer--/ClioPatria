@@ -873,21 +873,11 @@ resource_frequency_table(Pairs, Options) -->
 
 resource_table_header(Options) -->
 	{ option(label(Label), Options, 'Resource'),
-	  (   option(sort(Sort), Options)
-	  ->  (   Sort == frequency
-	      ->  A1 = [],
-		  A2 = [class(sorted)]
-	      ;	  A1 = [class(sorted)],
-		  A2 = []
-	      )
-	  ;   A1 = [],
-	      A2 = []
-	  )
-	},
-	html(tr([ th(A1, Label),
-		  th(A2, 'Count'),
-		  \skosmap_head(Options)
-		])).
+     option(sort(Sort), Options)
+   },
+	html(tr([ \sort_th(label,Sort,Label), 
+             \sort_th(frequency,Sort,'Count'),
+             \skosmap_head(Options) ])).
 
 skosmap_head(Options) -->
 	{ option(skosmap(true), Options) }, !,
@@ -2027,13 +2017,13 @@ table_rows(_, _, _, 0) --> !, [].
 table_rows([], _, _, _) --> [].
 table_rows([H|T], Goal, N, Left) -->
 	{ N2 is N + 1,
-	  (   N mod 2 =:= 0
-	  ->  Class = even
-	  ;   Class = odd
-	  ),
+	  % (   N mod 2 =:= 0
+	  % ->  Class = even
+	  % ;   Class = odd
+	  % ),
 	  Left2 is Left - 1
 	},
-	html(tr(class(Class), \call(Goal, H))),
+	html(tr(\call(Goal, H))),
 	table_rows(T, Goal, N2, Left2).
 
 delete_list_prefix(0, List, List) :- !.
