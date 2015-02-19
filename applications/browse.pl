@@ -1702,7 +1702,7 @@ otriple_header(Count, Object, Pred, Graph) -->
 with_object(Obj) -->
 	{ var(Obj)}, !.
 with_object(Obj) -->
-	html([' with object ', \rdf_link(Obj)]).
+	html([' with object ', \rdf_link(Obj,[resource_format(nslabel),decoration(false)])]).
 
 on_predicate(P) -->
 	{ var(P) }, !.
