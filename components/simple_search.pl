@@ -85,7 +85,7 @@ simple_search_form -->
 
 simple_search_form(Options) -->
 	{ option(label(Label), Options, 'Search'),
-	  option(submit_handler(Search), Options, search)
+	  option(submit_handler(Search), Options, cpa_browse:search)
 	},
 	html(form([ id(search_form),
 		    action(location_by_id(Search))
