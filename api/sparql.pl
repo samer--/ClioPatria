@@ -93,7 +93,7 @@ human_form_location(HREF) :-
 	has_yasgui, !,
 	http_link_to_id(yasgui, [], HREF).
 :- endif.
-redirect_human_form(HREF) :-
+human_form_location(HREF) :-
 	http_link_to_id(sparql_query_form, [], HREF).
 
 redirect_human_form(Request) :-
@@ -136,8 +136,8 @@ sparql_update(Request) :-
 	memberchk(content_type(ContentType), Request),
 	sub_atom(ContentType, 0, _, _, 'application/sparql-update'), !,
 	http_parameters(Request,
-			['default-graph-uri'(DefaultGraphs),
-			 'named-graph-uri'(NamedGraphs),
+			[ 'using-graph-uri'(DefaultGraphs),
+			  'using-named-graph-uri'(NamedGraphs),
 			  format(ReqFormat),
 			  entailment(Entailment)
 			],
@@ -152,8 +152,8 @@ sparql_update(Request) :-
 sparql_update(Request) :-
 	http_parameters(Request,
 			[ update(Query),
-			  'default-graph-uri'(DefaultGraphs),
-			  'named-graph-uri'(NamedGraphs),
+			  'using-graph-uri'(DefaultGraphs),
+			  'using-named-graph-uri'(NamedGraphs),
 			  format(ReqFormat),
 			  entailment(Entailment)
 			],
@@ -178,7 +178,7 @@ sparql_reply(Request, Query, Graphs, ReqFormat, Entailment) :-
 			 distinct(Distinct),
 			 entailment(Entailment)
 		       ]),
-	(   Compiled = update(_)
+	(   Compiled = sparql_query(update(_), _, _)
 	->  authorized(write(Graphs, sparql))
 	;   true
 	),
@@ -281,6 +281,14 @@ sparql_decl('default-graph-uri',
 sparql_decl('named-graph-uri',
 	    [ list(atom),
 	      description('Additional named graph(s) to query (not supported)')
+	    ]).
+sparql_decl('using-graph-uri',
+	    [ list(atom),
+	      description('The default graph(s) to update (not supported)')
+	    ]).
+sparql_decl('using-named-graph-uri',
+	    [ list(atom),
+	      description('Additional named graph(s) to update (not supported)')
 	    ]).
 sparql_decl(format,
 	    [ optional(true),

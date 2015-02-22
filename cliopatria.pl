@@ -106,7 +106,6 @@ user:file_search_path(library, cliopatria(lib)).
 		applications(admin),
 		applications(user),
 		applications(browse),
-		applications(flint),
 		applications(yasgui),
 
 		library(conf_d),
@@ -187,6 +186,7 @@ cp_server(Options) :-
 	set_prefix(QOptions),
 	attach_account_info,
 	set_session_options,
+	create_log_directory,
 	setting(http:port, DefPort),
 	setting(http:workers, DefWorkers),
 	setting(http:worker_options, Settings),
@@ -365,6 +365,19 @@ attach_account_info :-
 set_session_options :-
 	setting(http:max_idle_time, Idle),
 	http_set_session_options([timeout(Idle)]).
+
+%%	create_log_directory
+%
+%	Create the directory in which the log files reside.
+
+create_log_directory :-
+	current_setting(http:logfile),
+	setting(http:logfile, File), File \== '',
+	file_directory_name(File, DirName),
+	DirName \== '.', !,
+	catch(make_directory_path(DirName), E,
+	      print_message(warning, E)).
+create_log_directory.
 
 
 		 /*******************************
