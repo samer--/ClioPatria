@@ -93,10 +93,21 @@ http_openid:openid_hook(trusted(OpenID, Server)) :-
 %	to the user. This handler overrules the default OpenID handler.
 
 login_page(Request) :-
+   debug(openid,'Got login request: ~q',[Request]),
    (  member(x_forwarded_host(Host),Request),
+      member(protocol(http),Request),
       insecure_host(Host)
    -> reply_html_page(cliopatria(default), title('Login'),
-			[ p('Login from public website ~w disabled.'-Host) ])
+                      [ p('Login from public website ~w over insecure connection disabled.'-Host) ])
+   ;  \+member(x_forwarded_host(_),Request),
+      member(protocol(http),Request), 
+      thread_httpd:http_server_property(SSLPort,goal(conf_https:http_dispatch))
+   -> member(path(Path),Request),
+      member(search(Search),Request),
+      member(host(Host),Request),
+      parse_url(NewURL,[protocol(https),port(SSLPort),host(Host),path(Path),search(Search)]),
+      debug(openid,'Going to redirect to ~w',[NewURL]),
+      http_redirect(moved_temporary,NewURL,Request)
    ;  http_open_session(_, []),		% we need sessions to login
       http_parameters(Request,
             [ 'openid.return_to'(ReturnTo,
@@ -106,10 +117,26 @@ login_page(Request) :-
       reply_html_page(cliopatria(default),
             title('Login'),
             [ \explain_login(ReturnTo),
+              \maybe_insecure_login_warning(Request),
               \cond_openid_login_form(ReturnTo),
               \local_login(ReturnTo)
             ])
    ).
+
+maybe_insecure_login_warning(Request) -->
+   (   {member(protocol(https),Request)} -> []
+   ;  html(p(style("color:#a00"),b('This is an unencrypted connection and the password will be sent as clear text.')))
+   ).
+% extracted from hacked http_openid
+   % option(request_uri(RequestURI), Request),
+   % http_public_host(Request, Host, Port, [ global(false) ]),
+   % setting(http:public_scheme, Scheme),
+   % (   scheme_port(Scheme, Port)
+   % ->  format(atom(HostURL), '~w://~w', [Scheme, Host])
+   % ;   format(atom(HostURL), '~w://~w:~w', [Scheme, Host, Port])
+   % ),
+   % atomic_list_concat([HostURL, RequestURI], URL).
+
 
 explain_login(ReturnTo) -->
 	{ parse_url(ReturnTo, Parts),
