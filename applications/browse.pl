@@ -2082,7 +2082,7 @@ search(Request) :-
 	reply_html_page(cliopatria(default),
 			title('Search results for ~q'-[Query]),
 			[ h1('Search results for token "~q"'-[Query]),
-			  \rdf_table(Triples, [])
+			  \rdf_table(Triples, [resource_format(nslabel)])
 			]).
 
 find_literals(QueryText, [Query], exact(Query)) :-
@@ -2153,14 +2153,14 @@ rdf_table(Triples, Options) -->
 	},
 	html(table(class(block),
 		   [ tr([ th('Subject'), th('Predicate'), th('Object') ])
-		   | \table_rows_top_bottom(triple, Triples,
+		   | \table_rows_top_bottom(triple(Options), Triples,
 					    TopMax, BottomMax)
 		   ])).
 
-triple(rdf(S,P,O)) -->
-	html([ td(class(subject),   \rdf_link(S)),
-	       td(class(predicate), \rdf_link(P)),
-	       td(class(object),    \rdf_link(O))
+triple(Opts,rdf(S,P,O)) -->
+	html([ td(class(subject),   \rdf_link(S,Opts)),
+	       td(class(predicate), \rdf_link(P,Opts)),
+	       td(class(object),    \rdf_link(O,Opts))
 	     ]).
 
 
