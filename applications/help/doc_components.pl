@@ -80,7 +80,9 @@ api_tester(Path, _) -->
 	init_api_tester,
 	html([ div([class('api_test'), width('100%')],
 		   [ table(tbody(tr([ td([span(class(path), [Path]), '?']),
-				      td(class(input), input([id(api_input), type(text)])),
+				      td(class(input), input([id(api_input), type(text),
+                     onkeydown("if (event.keyCode == 13) document.getElementById('submit').click()")
+                  ])),
 				      td([ input([type(submit), id(submit), value(test),
 						  onClick('apiTest("api_input","'+Path+'");')])
 					 ])
