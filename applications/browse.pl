@@ -1776,7 +1776,7 @@ list_triples(Request) :-
 	->  findall(rdf(S,P,O), rdf_in_domain(S,P,O,Dom,Graph), Triples0)
 	;   atom(Range)
 	->  findall(rdf(S,P,O), rdf_in_range(S,P,O,Range,Graph), Triples0)
-	;   findall(rdf(S,P,O), (rdf(S,P,O,Graph),\+collection_prop(P)), Triples0)
+	;   findall(rdf(S,P,O), (rdf(S,P,O,Graph),\+invisible(S,P,O)), Triples0)
 	),
 	sort(Triples0, Triples),
 	sort_triples_by_label(Triples, Sorted),
@@ -1792,9 +1792,14 @@ list_triples(Request) :-
 			  \triple_table(Sorted, P, [resource_format(nslabel)])
 			]).
 
-:- rdf_meta collection_prop(r).
-collection_prop(rdf:first).
-collection_prop(rdf:rest).
+:- rdf_meta invisible(r,r,o).
+invisible(_,rdf:first,_).
+invisible(_,rdf:rest,_).
+invisible(_,owl:cardinality,_).
+invisible(_,owl:minCardinality,_).
+invisible(_,owl:maxCardinality,_).
+invisible(_,owl:onProperty,_).
+invisible(_,rdf:type,owl:'Restriction').
 
 rdf_in_domain(S,P,O,Dom,Graph) :-
 	rdf(S, P, O, Graph),
