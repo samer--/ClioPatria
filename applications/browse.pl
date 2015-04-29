@@ -231,8 +231,7 @@ journal(_) --> [].
 %	Deal with actions on multiple graphs.
 
 graph_actions(Options, [show_actions(true)|Options]) :-
-	logged_on(User, X),
-	X \== User,
+	logged_on(User), !,
 	catch(check_permission(User, write(_, unload(user))), _, fail), !.
 graph_actions(Options, Options).
 
@@ -525,8 +524,7 @@ graph_actions(Graph) -->
 	     ]).
 
 li_delete_graph(Graph) -->
-	{ logged_on(User, X),
-	  X \== User,
+	{ logged_on(User),
 	  catch(check_permission(User, write(_, unload(Graph))), _, fail), !,
 	  http_link_to_id(unload_graph, [], Action)
 	},
@@ -539,8 +537,7 @@ li_delete_graph(Graph) -->
 li_delete_graph(_) --> [].
 
 li_persistent_graph(Graph) -->
-	{ logged_on(User, X),
-	  X \== User,
+	{ logged_on(User),
 	  catch(check_permission(User, write(_, persistent(Graph))), _, fail), !,
 	  http_link_to_id(modify_persistency, [], Action),
 	  (   rdf_graph_property(Graph, persistent(true))
@@ -555,6 +552,7 @@ li_persistent_graph(Graph) -->
 		       'Make this graph ',
 		       input([class(gaction), type(submit), value(Op)])
 		     ]))).
+li_persistent_graph(_) --> [].
 
 li_schema_graph(Graph) -->
 	{ http_link_to_id(export_graph_schema, [], Action),
@@ -1297,11 +1295,35 @@ list_resource(URI, Options) -->
 	html([ h1([ 'Local view for "',
 		    \location(URI, Graph), '"'
 		  ]),
+	       \define_prefix(URI),
 	       \local_view(URI, Graph, Options),
 	       p(\as_object(URI, Graph)),
 	       p(\as_graph(URI)),
 	       \uri_info(URI, Graph)
 	     ]).
+
+%%	define_prefix(+URI)//
+%
+%	Allow defining a new prefix if the  resource is not covered by a
+%	prefix.
+
+define_prefix(URI) -->
+	{ rdf_global_id(_Prefix:_Local, URI) }, !.
+define_prefix(URI) -->
+	{ iri_xml_namespace(URI, Namespace, LocalName),
+	  LocalName \== '',
+	  http_link_to_id(add_prefix, [], Action)
+	},
+	html(form(action(Action),
+		  ['No prefix for ', a(href(Namespace),Namespace), '. ',
+		   \hidden(uri, Namespace),
+		   input([name(prefix), size(8),
+			  title('Short unique abbreviation')
+			 ]),
+		   input([type(submit), value('Add prefix')])
+		  ])).
+define_prefix(_) -->			% Not a suitable URI.  Warn?
+	[].
 
 
 %%	location(+URI, ?Graph) is det.
@@ -1680,12 +1702,14 @@ context_graph(URI, Options) -->
 				 wrap_url(resource_link),
 				 graph_attributes([ rankdir('RL')
 						  ]),
-				 shape_hook(shape(URI, GraphOption))
+				 shape_hook(shape(URI, GraphOption)),
+				 bag_shape_hook(bag_shape(GraphOption))
 			       ])
 	     ]).
 
 :- public
-	shape/4.
+	shape/4,
+	bag_shape/3.
 
 %%	shape(+Start, +Options, +URI, -Shape) is semidet.
 %
@@ -1696,6 +1720,16 @@ shape(Start, Options, URI, Shape) :-
 	cliopatria:node_shape(URI, Shape, [start(Start)|Options]), !.
 shape(Start, _Options, Start,
       [ shape(tripleoctagon),style(filled),fillcolor('#ff85fd'),id(start) ]).
+
+%%	bag_shape(+Options, +Members, -Shape) is semidet.
+%
+%	Compute properties for a bag
+
+bag_shape(Options, Members, Shape) :-
+	cliopatria:bag_shape(Members, Shape, Options), !.
+bag_shape(_, _, []).
+
+
 
 %%	context_graph(+URI, -Triples, +Options) is det.
 %
@@ -1726,20 +1760,35 @@ context_triple(URI, Triple) :-
 	transitive_context(CP),
 	parents(URI, CP, Triples, [URI], 3),
 	member(Triple, Triples).
-context_triple(URI, rdf(URI, P, O)) :-
+context_triple(URI, Triple) :-
+	cliopatria:context_predicate(URI, R),
+	rdf_has(URI, R, O, P),
+	normalize_triple(rdf(URI, P, O), Triple).
+context_triple(URI, Triple) :-
 	context(R),
-	rdf_has(URI, R, O, P).
-context_triple(URI, rdf(S, P, URI)) :-
+	rdf_has(URI, R, O, P),
+	normalize_triple(rdf(URI, P, O), Triple).
+context_triple(URI, Triple) :-
 	context(R),
-	rdf_has(S, R, URI, P).
+	rdf_has(S, R, URI, P),
+	normalize_triple(rdf(S, P, URI), Triple).
 
-parents(URI, Up, [rdf(URI, P, Parent)|T], Visited, MaxD) :-
+normalize_triple(rdf(S, inverse_of(P0), O),
+		 rdf(O, P, S)) :- !,
+	rdf_predicate_property(P0, inverse_of(P)).
+normalize_triple(RDF, RDF).
+
+
+
+parents(URI, Up, [Triple|T], Visited, MaxD) :-
 	succ(MaxD2, MaxD),
 	rdf_has(URI, Up, Parent, P),
+	normalize_triple(rdf(URI, P, Parent), Triple),
 	\+ memberchk(Parent, Visited),
 	parents(Parent, Up, T, [Parent|Visited], MaxD2).
 parents(_, _, [], _, _).
 
+transitive_context(owl:sameAs).
 transitive_context(rdfs:subClassOf).
 transitive_context(rdfs:subPropertyOf).
 transitive_context(skos:broader).

@@ -85,7 +85,9 @@ The example below adds an item to =Help= popup of ClioPatria:
 	predicate_order/2,		% +P, -Order
 	context_graph/2,		% +R, -RDF
 	context_graph/3,		% +R, -RDF, +Options
-	node_shape/3.			% +R, -Shape, +Options
+	context_predicate/2,		% +R, -Pred
+	node_shape/3,			% +R, -Shape, +Options
+	bag_shape/3.			% +Members, -Shape, +Options
 
 
 		 /*******************************
@@ -248,11 +250,14 @@ The example below adds an item to =Help= popup of ClioPatria:
 %	describe the context. Typically only   object-triples  are used,
 %	although that is not a requirement.
 %
-%	@see	This predicate hooks cpa_browse:context_graph/2.  Please
+%	@see	This predicate hooks cpa_browse:context_graph/3.  Please
 %		visit the soure to learn about available building
 %		blocks.
 
-
+%%	context_predicate(+Subject, -Predicate) is nondet.
+%
+%	True when rdf(Subject, Predicate, _)  must   be  included in the
+%	context graph for Subject.
 
 %%	node_shape(+URI, -Shape, +Options) is semidet.
 %
@@ -266,3 +271,18 @@ The example below adds an item to =Help= popup of ClioPatria:
 %	       context node for the resource StartURI.
 %	@see   http://www.graphviz.org/doc/info/shapes.html
 
+%%	node_shape(+Bag, -Shape, +Options) is semidet.
+%
+%	Compute the desired properties for a table used to display a bag
+%	of resources.  Shape options include:
+%
+%	  - max(Max)
+%	  Only show the first Max members of the bag.  Default is 5.
+%	  - shape(Shape)
+%	  Basic shape
+%	  - style(Style)
+%	  Style options
+%	  - max_label_length(Chars)
+%	  Truncate labels that have more then Chars characters.
+%
+%	@param Bag is a list of member resources
