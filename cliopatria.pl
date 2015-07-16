@@ -448,11 +448,11 @@ rdf_extension(ttl).
 rdf_extension(nt).
 rdf_extension(ntriples).
 
-cmd_option(p, port,    positive_integer, 'Port to connect to').
-cmd_option(w, workers, positive_integer, 'Number of workers to start').
-cmd_option(-, after_load, term,   'Goal to run after loading').
-cmd_option(-, prefix,  atom,	    'Rebase the server to prefix/').
-cmd_option(-, store,   atom,		 'Directory for persistent store').
+cmd_option(p, port,	  positive_integer, 'Port to connect to').
+cmd_option(w, workers,    positive_integer, 'Number of workers to start').
+cmd_option(-, after_load, term,	            'Goal to run after loading').
+cmd_option(-, prefix,	  atom,		    'Rebase the server to prefix/').
+cmd_option(-, store,	  atom,	            'Directory for persistent store').
 % dummy to stop list_trivial_fail from warning about long_option/2.
 cmd_option(-, -, boolean, 'Dummy') :- fail.
 
@@ -548,7 +548,7 @@ text_to_value(negative_integer, Text, Int) :-
 text_to_value(float, Text, Float) :-
 	atom_number(Text, Number), Float = float(Number).
 text_to_value(term, Text, Term) :-
-	atom_to_term(Text,Term,[]).
+	atom_to_term(Text, Term, _).
 
 boolean(true,  true).
 boolean(yes,   true).

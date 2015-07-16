@@ -66,7 +66,7 @@ rdf_guess_format_and_load(Stream, Options) :-
 	    forall(archive_data_stream(Archive, DataStream, [meta_data(MetaData)]),
 		   call_cleanup(
 		       ( member_base_uri(MetaData, Options, Options2),
-			 option(base_uri(Base), Options2),
+			 option(base_uri(Base), Options2, 'http://example.org/'),
 			 set_stream(DataStream, file_name(Base)),
 			 (   file_base_name(Base, FileName),
 			     non_rdf_file(FileName)
@@ -114,11 +114,17 @@ non_rdf_base(todo).
 %	Currently, this seeks for a valid  XML document upto the rdf:RDF
 %	element before concluding that the file is RDF/XML. Otherwise it
 %	assumes that the document is Turtle.
+%
+%	@tbd	Recognise Turtle variations from content
 
 rdf_guess_data_format(_, Format) :-
 	nonvar(Format), !.
 rdf_guess_data_format(Stream, xml) :-
 	xml_doctype(Stream, _), !.
+rdf_guess_data_format(Stream, Format) :-
+	stream_property(Stream, file_name(File)),
+	file_name_extension(_, Ext, File),
+	rdf_db:rdf_file_type(Ext, Format), !.
 rdf_guess_data_format(_, turtle).
 
 

@@ -82,6 +82,9 @@ ClioPatria skin.
 		http_reply_file(icons('favicon.ico'), []),
 		[]).
 
+:- html_resource(js('cliopatria.js'),
+		 [ requires([jquery])
+		 ]).
 :- html_resource(plain,
 		 [ virtual(true),
 		   requires([ css('plain.css')
@@ -89,7 +92,8 @@ ClioPatria skin.
 		 ]).
 :- html_resource(cliopatria,
 		 [ virtual(true),
-		   requires([ css('cliopatria.css')
+		   requires([ css('cliopatria.css'),
+			      js('cliopatria.js')
 			    ])
 		 ]).
 
@@ -220,9 +224,10 @@ component_version(Component) -->
 %	implementation) of this page. This link   is created only if the
 %	library applications(help/http_help) is loaded.
 
+:- if(current_predicate(http_help:page_documentation_link//1)).
 current_page_doc_link -->
-	{ current_predicate(http_help:page_documentation_link//1), !,
-	  http_current_request(Request)
-	},
+	{ http_current_request(Request) },
 	http_help:page_documentation_link(Request).
+:- else.
 current_page_doc_link --> [].
+:- endif.
