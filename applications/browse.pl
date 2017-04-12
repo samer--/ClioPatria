@@ -43,7 +43,7 @@
 :- use_module(library(http/http_wrapper)).
 :- use_module(library(http/yui_resources)).
 :- use_module(library(http/http_path)).
-:- use_module(library(http/jquery)).
+:- use_module(library(http/cp_jquery)).
 
 :- use_module(library(semweb/rdf_db)).
 :- use_module(library(semweb/rdfs)).
@@ -134,8 +134,22 @@ list_graphs(_Request) :-
 	reply_html_page(cliopatria(default),
 			title('RDF Graphs'),
 			[ h1('Named graphs in the RDF store'),
+			  \warn_volatile,
 			  \graph_table(Rows, [])
 			]).
+
+:- if(current_predicate(rdf_persistency_property/1)).
+warn_volatile -->
+	{ rdf_persistency_property(access(read_only)), !,
+	  rdf_persistency_property(directory(Dir))
+	},
+	html(div(class(msg_warning),
+		 [ 'WARNING: The persistent store ', code(Dir), ' was loaded in ',
+		   b('read-only'), ' mode.  All changes will be lost when ',
+		   'the server is stopped.'
+		 ])).
+:- endif.
+warn_volatile --> [].
 
 :- if((rdf_version(V),V>=30000)).
 graph_triples(Graph, Count) :-
@@ -175,7 +189,8 @@ graph_row(_, virtual(total)) --> !,
 	{ rdf_statistics(triples(Count))
 	},
 	html([ th(class(total), 'Total #triples:'),
-	       \nc('~D', Count, [class(total)])
+	       \nc('~D', Count, [class(total)]),
+	       td([],[]) % # Empty cell for persistency column
 	     ]).
 graph_row(Options, Graph) -->
 	{ graph_triples(Graph, Count)
@@ -1695,7 +1710,8 @@ uri_predicate_info(_, _) --> [].
 %	    the context graph.
 
 context_graph(URI, Options) -->
-	{ merge_options(Options, [style(_)], GraphOption)
+	{ merge_options(Options, [style(_)], GraphOption),
+	  rdf_equal(owl:sameAs, SameAs)
 	},
 	html([ \graphviz_graph(context_graph(URI, GraphOption),
 			       [ object_attributes([width('100%')]),
@@ -1703,7 +1719,8 @@ context_graph(URI, Options) -->
 				 graph_attributes([ rankdir('RL')
 						  ]),
 				 shape_hook(shape(URI, GraphOption)),
-				 bag_shape_hook(bag_shape(GraphOption))
+				 bag_shape_hook(bag_shape(GraphOption)),
+				 smash([SameAs])
 			       ])
 	     ]).
 
@@ -1943,10 +1960,15 @@ list_triples_with_object(Request) :-
 				       ]),
 			  graph(Graph, [optional(true),
 					description('Limit to a given graph (URI)')
-				       ])
+				       ]),
+			  sortBy(Sort,
+				 [ oneof([label, subject, predicate]),
+				   default(label),
+				   description('How to sort the result')
+				 ])
 			]),
 	target_object(RObject, LObject, Object),
-	list_triples_with_object(Object, P, Graph).
+	list_triples_with_object(Object, P, Graph, [sortBy(Sort)]).
 
 target_object(RObject, _LObject, RObject) :-
 	atom(RObject), !.
@@ -1969,26 +1991,34 @@ list_triples_with_literal(Request) :-
 			     description('Object as resource (URI)')
 			    ])
 			]),
-	list_triples_with_object(literal(Text), _, _).
+	list_triples_with_object(literal(Text), _, _, []).
 
 
-list_triples_with_object(Object, P, Graph) :-
+list_triples_with_object(Object, P, Graph, Options) :-
 	findall(S-P, rdf(S,P,Object,Graph), Pairs0),
 	sort(Pairs0, Pairs),
-	sort_pairs_by_label(Pairs, Sorted),
+	(   option(sortBy(label), Options)
+	->  sort_pairs_by_label(Pairs, Sorted)
+	;   option(sortBy(predicate), Options)
+	->  transpose_pairs(Pairs, Transposed),
+	    flip_pairs(Transposed, Sorted)
+	;   Sorted = Pairs
+	),
 	length(Pairs, Count),
 	label_of(Object, OLabel),
 	reply_html_page(cliopatria(default),
 			title('Triples with object ~w'-[OLabel]),
-			[ h1(\otriple_header(Count, Object, P, Graph)),
+			[ h1(\otriple_header(Count, Object, P, Graph, Options)),
 			  \otriple_table(Sorted, Object, [resource_format(nslabel)])
 			]).
 
-otriple_header(Count, Object, Pred, Graph) -->
+otriple_header(Count, Object, Pred, Graph, Options) -->
+	{ option(sortBy(SortBy), Options) },
 	html([ 'Table for the ~D triples'-[Count],
 	       \with_object(Object),
 	       \on_predicate(Pred),
-	       \in_graph(Graph)
+	       \in_graph(Graph),
+	       \sorted_by(SortBy)
 	     ]).
 
 with_object(Obj) -->

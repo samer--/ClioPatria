@@ -40,6 +40,7 @@
 :- use_module(library(option)).
 :- use_module(library(record)).
 :- use_module(jena_properties).
+:- use_module(text_properties).
 :- use_module(library(debug)).
 :- use_module(library(apply)).
 :- use_module(library(ordsets)).
@@ -257,7 +258,7 @@ resolve_query(optional(Q0), (Q *-> true ; true), S0, S) :- !,
 resolve_query(rdf(Subj0,P0,O0), Q, S0, S) :-
 	resolve_iri(P0, P1, S0),
 	atom(P1),
-	sparql:current_functional_property(P1, P, Argc), !,
+	sparql:current_functional_property(P1, P, _), !,
 	resolve_graph_term(Subj0, Subj, Q1, S0, S1),
 	(   nonvar(O0),
 	    O0 = collection(ArgList0),
@@ -268,7 +269,7 @@ resolve_query(rdf(Subj0,P0,O0), Q, S0, S) :-
 	),
 	FP =.. [P|ArgList],
 	length(ArgList, ArgCount),
-	(   ArgCount == Argc
+	(   sparql:current_functional_property(P1, P, ArgCount)
 	->  true
 	;   throw(error(existence_error(functional_property, FP), _))
 	),
