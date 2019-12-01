@@ -1,31 +1,37 @@
 /*  Part of ClioPatria SeRQL and SPARQL server
 
     Author:        Jan Wielemaker
-    E-mail:        J.Wielemaker@cs.vu.nl
+    E-mail:        J.Wielemaker@vu.nl
     WWW:           http://www.swi-prolog.org
-    Copyright (C): 2010, University of Amsterdam,
-		   VU University Amsterdam
+    Copyright (c)  2010-2018, University of Amsterdam,
+                              VU University Amsterdam,
+                              CWI, Amsterdam
+    All rights reserved.
 
-    This program is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public License
-    as published by the Free Software Foundation; either version 2
-    of the License, or (at your option) any later version.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
 
-    You should have received a copy of the GNU General Public
-    License along with this library; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
 
-    As a special exception, if you link this library with other files,
-    compiled with a Free Software compiler, to produce an executable, this
-    library does not by itself cause the resulting executable to be covered
-    by the GNU General Public License. This exception does not however
-    invalidate any other reasons why the executable file might be covered by
-    the GNU General Public License.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
 */
 
 :- module(cliopatria, []).
@@ -57,232 +63,251 @@ The example below adds an item to =Help= popup of ClioPatria:
     :- http_handler(root(about), about, []).
 
     about(Request) :-
-	<generate the about page>
+        <generate the about page>
     ==
 */
 
 :- multifile
-	menu_item/2,
-	menu_label/2,
-	menu_popup_order/2,
+    menu_item/2,
+    menu_label/2,
+    menu_popup_order/2,
 
-	rdf_label:label_property/1,
-	bnode_label//1,			% +Resource
-	display_link//2,		% +RDFObject, +Options
-	resource_link/2,		% +URI, -URL
+    rdf_label:label_property/1,
+    bnode_label//1,                 % +Resource
+    display_link//2,                % +RDFObject, +Options
+    resource_link/2,                % +URI, -URL
 
-	list_resource//2,		% +URI, +Options
-   resource_crawler//2, % +URI, +NumTriples
+    list_resource//2,               % +URI, +Options
+    resource_crawler//2,            % +URI, +NumTriples
 
-	user_preference_db/2,		% ?Property, ?Value
-	user_preference_default/2,	% ?Property, ?Value
+    user_preference_db/2,           % ?Property, ?Value
+    user_preference_default/2,      % ?Property, ?Value
 
-	page_body//1,			% +Body
-	page_body//2,			% +Style, +Body
-	server_address//0,
-	logo//0,
+    page_body//1,                   % +Body
+    page_body//2,                   % +Style, +Body
+    server_address//0,
+    logo//0,
 
-	predicate_order/2,		% +P, -Order
-	context_graph/2,		% +R, -RDF
-	context_graph/3,		% +R, -RDF, +Options
-	context_predicate/2,		% +R, -Pred
-	node_shape/3,			% +R, -Shape, +Options
-	bag_shape/3.			% +Members, -Shape, +Options
+    predicate_order/2,              % +P, -Order
+    context_graph/2,                % +R, -RDF
+    context_graph/3,                % +R, -RDF, +Options
+    context_predicate/2,            % +R, -Pred
+    node_label/4,                   % +R, +Lang, +MaxLen, -Label
+    node_shape/3,                   % +R, -Shape, +Options
+    bag_shape/3,                    % +Members, -Shape, +Options
+    edge_shape/3.                   % +P, -Shape, +Options
 
 
-		 /*******************************
-		 *	     THE MENU		*
-		 *******************************/
+                 /*******************************
+                 *           THE MENU           *
+                 *******************************/
 
-%%	menu_item(?Item, ?Label)
+%!  menu_item(?Item, ?Label)
 %
-%	This hook adds an item to the ClioPatria menu. Item is a term of
-%	the form [rank=]popup/item, where _popup_   denotes  the name of
-%	the popup menu and _item_ is a  (new)   item  to be added to the
-%	popup. The _item_ is the handler-identifier  of the HTTP handler
-%	that implements the item  (see   http_handler/3).  Label  is the
-%	label displayed. _rank_ defines the   position inside the popup.
-%	The built-in items are numbered 100,200,...
+%   This hook adds an item to the ClioPatria menu. Item is a term of
+%   the form [rank=]popup/item, where _popup_   denotes  the name of
+%   the popup menu and _item_ is a  (new)   item  to be added to the
+%   popup. The _item_ is the handler-identifier  of the HTTP handler
+%   that implements the item  (see   http_handler/3).  Label  is the
+%   label displayed. _rank_ defines the   position inside the popup.
+%   The built-in items are numbered 100,200,...
 %
-%	For example, if we want to add   a  new item to the *Repository*
-%	menu after *|Load from library|* that   crawls  LOD data, we can
-%	use the following code:
+%   For example, if we want to add   a  new item to the *Repository*
+%   menu after *|Load from library|* that   crawls  LOD data, we can
+%   use the following code:
 %
-%	==
-%	:- use_module(cliopatria(hooks)).
-%	:- use_module(library(http/http_dispatch)).
+%   ==
+%   :- use_module(cliopatria(hooks)).
+%   :- use_module(library(http/http_dispatch)).
 %
-%	:- handler(cliopatria('crawl_lod_form'), crawl_lod_form, []).
+%   :- handler(cliopatria('crawl_lod_form'), crawl_lod_form, []).
 %
-%	cliopatria:menu_item(400=repository/crawl_lod_form, 'Crawl LOD').
+%   cliopatria:menu_item(400=repository/crawl_lod_form, 'Crawl LOD').
 %
-%	crawl_lod_form(Request) :-
-%		...
-%	==
+%   crawl_lod_form(Request) :-
+%           ...
+%   ==
 %
-%	@see The menu_label/2 and menu_popup_order/2 hooks provide
-%	further control over the menu.
-%	@see cp_menu:menu_item/2 implements the default menu.
+%   @see The menu_label/2 and menu_popup_order/2 hooks provide
+%   further control over the menu.
+%   @see cp_menu:menu_item/2 implements the default menu.
 
-%%	menu_label(+Id, -Label)
+%!  menu_label(+Id, -Label)
 %
-%	This hook allows for dynamic   or redefined (e.g., multilingual)
-%	labels.  It  is   called   both    for   popup-identifiers   and
-%	item-identifiers.
+%   This hook allows for dynamic   or redefined (e.g., multilingual)
+%   labels.  It  is   called   both    for   popup-identifiers   and
+%   item-identifiers.
 
-%%	menu_popup_order(+Id, -Location:integer)
+%!  menu_popup_order(+Id, -Location:integer)
 %
-%	This hook controls the order of the popup-item of ClioPatria's
-%	menu.
-
-
-		 /*******************************
-		 *		LABELS		*
-		 *******************************/
-
-%%	rdf_label:label_property(?Property)
-%
-%	True if the value of  Property   can  be  used to (non-uniquely)
-%	describe an object to the user.   This  hook provides additional
-%	facts to cp_label:label_property/1.
-
-%%	bnode_label(+Resource)//
-%
-%	HTML-write DCG rule that produces an HTML description for the
-%	given RDF blank node.  See cp_label:bnode_label//1.
-
-%%	display_link(+RDFObject)//
-%
-%	HTML-write DCG rule that produces an   HTML  description for the
-%	given RDFObject (a resource  or   literal)  with  an appropriate
-%	link. This predicate is called by the RDF browser to present RDF
-%	triples.
-
-%%	resource_link(+URI, -URL)//
-%
-%	URL is the link created by rdf_link//1 for URI. The default
-%	opens the ClioPatria `local view'.
-%
-%	@see	cpa_browse:list_resource/1 is the handler addressed by the
-%		default link.
-%	@see	cp_label:resource_link/2 calls the hook.
+%   This hook controls the order of the popup-item of ClioPatria's
+%   menu.
 
 
-		 /*******************************
-		 *	    LOCAL VIEW		*
-		 *******************************/
+                 /*******************************
+                 *              LABELS          *
+                 *******************************/
 
-%%	list_resource(+URI, +Options)//
+%!  rdf_label:label_property(?Property)
 %
-%	This  hook  is  called   by  cpa_browse:list_resource//2,  which
-%	display the `local view' page for a   resource. This can be used
-%	to create a different page for   describing a resource and still
-%	using overall infrastructure such as rdf_link//1.
+%   True if the value of  Property   can  be  used to (non-uniquely)
+%   describe an object to the user.   This  hook provides additional
+%   facts to cp_label:label_property/1.
 
-
-		 /*******************************
-		 *   USER/SESSION PREFERENCES	*
-		 *******************************/
-
-%%	user_preference_db(?Property:atom, ?Value:rdf_object) is nondet.
+%!  bnode_label(+Resource)//
 %
-%	Query properties for the current   user/session.  This mechanism
-%	allows code to access information about the user/session without
-%	committing to a particular  implementation.   The  predicate and
-%	values are compatible with RDF to   allow  implementing the user
-%	database in RDF, typically using the OpenID as subject.
+%   HTML-write DCG rule that produces an HTML description for the
+%   given RDF blank node.  See cp_label:bnode_label//1.
 
-%%	user_preference_default(?Property:atom, ?Value:rdf_object) is nondet.
+%!  display_link(+RDFObject)//
 %
-%	Provides defaults for the user_preference/2.
+%   HTML-write DCG rule that produces an   HTML  description for the
+%   given RDFObject (a resource  or   literal)  with  an appropriate
+%   link. This predicate is called by the RDF browser to present RDF
+%   triples.
+
+%!  resource_link(+URI, -URL)//
 %
-%	@see user_preference_db/2
-
-
-		 /*******************************
-		 *	       SKINS		*
-		 *******************************/
-
-%%	page_body(+Body)// is semidet.
-%%	page_body(+Style, +Body)// is semidet.
+%   URL is the link created by rdf_link//1 for URI. The default
+%   opens the ClioPatria `local view'.
 %
-%	Emit the body of  the  page.  This   can  be  used  to provide a
-%	different skin for ClioPatria. The Style argument is passed from
-%	reply_html_page/3. The file skin(cliopatria) defines the overall
-%	skin and first calls  cliopatria:page_body//2,   if  this  fails
-%	cliopatria:page_body//1 and if  this  fails   too  it  uses  the
-%	default page.
-
-%%	server_address//
-%
-%	HTML-write DCG rule that writes the   address  of the server. If
-%	you want to maintain its  normal   position  in the page layout,
-%	this should create an element of class =address= using the class
-%	=cliopatria=.
-
-%%	logo//
-%
-%	Logo placed left of the menu-bar.  Must   be  an object that has
-%	`float:left` style.
+%   @see    cpa_browse:list_resource/1 is the handler addressed by the
+%           default link.
+%   @see    cp_label:resource_link/2 calls the hook.
 
 
-		 /*******************************
-		 *	    RDF BROWSING	*
-		 *******************************/
+                 /*******************************
+                 *          LOCAL VIEW          *
+                 *******************************/
 
-%%	predicate_order(+Pred, -Order) is semidet.
+%!  list_resource(+URI, +Options)//
 %
-%	Define the order in which predicates appear in the local view.
-%	The Order is an integer. The system ordering is defined by
-%	cpa_browse:p_order/2. Predicates that are not explicitly ordered
-%	are placed at the end of the table an ordered alphabetically.
-%
-%	Predicates that have order `0' are _deleted_ from the table.
+%   This  hook  is  called   by  cpa_browse:list_resource//2,  which
+%   display the `local view' page for a   resource. This can be used
+%   to create a different page for   describing a resource and still
+%   using overall infrastructure such as rdf_link//1.
 
-%%	context_graph(+R, -RDF, +Options) is semidet.
-%
-%	@deprecated Use context_graph/3.
 
-%%	context_graph(+R, -RDF, +Options) is semidet.
-%
-%	This hook redefines the context graph   shown by the RDF browser
-%	for the resource R. RDF is  a   list  of rdf(S,P,O) triples that
-%	describe the context. Typically only   object-triples  are used,
-%	although that is not a requirement.
-%
-%	@see	This predicate hooks cpa_browse:context_graph/3.  Please
-%		visit the soure to learn about available building
-%		blocks.
+                 /*******************************
+                 *   USER/SESSION PREFERENCES   *
+                 *******************************/
 
-%%	context_predicate(+Subject, -Predicate) is nondet.
+%!  user_preference_db(?Property:atom, ?Value:rdf_object) is nondet.
 %
-%	True when rdf(Subject, Predicate, _)  must   be  included in the
-%	context graph for Subject.
+%   Query properties for the current   user/session.  This mechanism
+%   allows code to access information about the user/session without
+%   committing to a particular  implementation.   The  predicate and
+%   values are compatible with RDF to   allow  implementing the user
+%   database in RDF, typically using the OpenID as subject.
 
-%%	node_shape(+URI, -Shape, +Options) is semidet.
+%!  user_preference_default(?Property:atom, ?Value:rdf_object) is nondet.
 %
-%	Compute the desired shape for a GraphViz node representing URI.
+%   Provides defaults for the user_preference/2.
 %
-%	@param URI is the resource for which to determine the shape
-%	@param Shape is a list Name(Value) for parameters given to
-%	       GraphViz.
-%	@param Options provides additional guidance. Currently it
-%	       may provide start(StartURI) to indicate the graph is a
-%	       context node for the resource StartURI.
-%	@see   http://www.graphviz.org/doc/info/shapes.html
+%   @see user_preference_db/2
 
-%%	node_shape(+Bag, -Shape, +Options) is semidet.
+
+                 /*******************************
+                 *             SKINS            *
+                 *******************************/
+
+%!  page_body(+Body)// is semidet.
+%!  page_body(+Style, +Body)// is semidet.
 %
-%	Compute the desired properties for a table used to display a bag
-%	of resources.  Shape options include:
+%   Emit the body of  the  page.  This   can  be  used  to provide a
+%   different skin for ClioPatria. The Style argument is passed from
+%   reply_html_page/3. The file skin(cliopatria) defines the overall
+%   skin and first calls  cliopatria:page_body//2,   if  this  fails
+%   cliopatria:page_body//1 and if  this  fails   too  it  uses  the
+%   default page.
+
+%!  server_address//
 %
-%	  - max(Max)
-%	  Only show the first Max members of the bag.  Default is 5.
-%	  - shape(Shape)
-%	  Basic shape
-%	  - style(Style)
-%	  Style options
-%	  - max_label_length(Chars)
-%	  Truncate labels that have more then Chars characters.
+%   HTML-write DCG rule that writes the   address  of the server. If
+%   you want to maintain its  normal   position  in the page layout,
+%   this should create an element of class =address= using the class
+%   =cliopatria=.
+
+%!  logo//
 %
-%	@param Bag is a list of member resources
+%   Logo placed left of the menu-bar.  Must   be  an object that has
+%   `float:left` style.
+
+
+                 /*******************************
+                 *          RDF BROWSING        *
+                 *******************************/
+
+%!  predicate_order(+Pred, -Order) is semidet.
+%
+%   Define the order in which predicates appear in the local view.
+%   The Order is an integer. The system ordering is defined by
+%   cpa_browse:p_order/2. Predicates that are not explicitly ordered
+%   are placed at the end of the table an ordered alphabetically.
+%
+%   Predicates that have order `0' are _deleted_ from the table.
+
+%!  context_graph(+R, -RDF, +Options) is semidet.
+%
+%   @deprecated Use context_graph/3.
+
+%!  context_graph(+R, -RDF, +Options) is semidet.
+%
+%   This hook redefines the context graph   shown by the RDF browser
+%   for the resource R. RDF is  a   list  of rdf(S,P,O) triples that
+%   describe the context. Typically only   object-triples  are used,
+%   although that is not a requirement.
+%
+%   @see    This predicate hooks cpa_browse:context_graph/3.  Please
+%           visit the soure to learn about available building
+%           blocks.
+
+%!  context_predicate(+Subject, -Predicate) is nondet.
+%
+%   True when rdf(Subject, Predicate, _)  must   be  included in the
+%   context graph for Subject.
+
+%!  node_label(+URI, +Lang, +MaxLen, -Label) is semidet.
+%
+%   Compute a label for URI in the given language, truncating the
+%   label to MaxLen characters.
+
+%!  node_shape(+URI, -Shape, +Options) is semidet.
+%
+%   Compute the desired shape for a GraphViz node representing URI.
+%
+%   @param URI is the resource for which to determine the shape
+%   @param Shape is a list Name(Value) for parameters given to
+%          GraphViz.
+%   @param Options provides additional guidance. Currently it
+%          may provide start(StartURI) to indicate the graph is a
+%          context node for the resource StartURI.
+%   @see   http://www.graphviz.org/doc/info/shapes.html
+
+%!  bag_shape(+Bag, -Shape, +Options) is semidet.
+%
+%   Compute the desired properties for a table used to display a bag
+%   of resources.  Shape options include:
+%
+%     - max(Max)
+%     Only show the first Max members of the bag.  Default is 5.
+%     - shape(Shape)
+%     Basic shape
+%     - style(Style)
+%     Style options
+%     - max_label_length(Chars)
+%     Truncate labels that have more then Chars characters.
+%
+%   @param Bag is a list of member resources
+
+%!  edge_shape(+Triple, -Shape, +Options) is semidet.
+%
+%   Compute the desired attributes for a GraphViz edge representing
+%   the predicate Triple.
+%
+%   @param Triple is the triple for which to determine the shape
+%   @param Shape is a list Name(Value) for parameters given to
+%          GraphViz.
+%   @param Options provides additional guidance. Currently it
+%          may provide start(StartURI) to indicate the graph is a
+%          context node for the resource StartURI.
