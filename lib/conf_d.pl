@@ -215,7 +215,7 @@ conf_d_members(DirSpec, InfoRecords, Options) :-
                                  [ file_type(directory),
                                    solutions(all)
                                  ]),
-              conf_d_files(Dir, Files, Options)
+              conf_d_files(Options, Dir, _-Files)
             ), FileLists),
     append(FileLists, Files0),
     sort(Files0, Files), % remove duplicates introduced by absolute & relative ClioPatria paths
